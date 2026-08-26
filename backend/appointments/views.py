@@ -1,0 +1,185 @@
+import datetime
+from django.db import transaction, models
+from rest_framework import viewsets, permissions, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.decorators import action
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from salons.models import Service, Staff, WorkingHour, StaffLeave
+from .models import Appointment
+from .serializers import AppointmentSerializer, AppointmentCreateSerializer
+from .services import AvailabilityEngine
+
+class AvailabilityView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter('salon_id', int, required=True),
+            OpenApiParameter('service_id', int, required=True),
+            OpenApiParameter('staff_id', int, required=True),
+            OpenApiParameter('date', str, required=True, description='YYYY-MM-DD format')
+        ]
+    )
+    def get(self, request):
+        salon_id = request.query_params.get('salon_id')
+        service_id = request.query_params.get('service_id')
+        staff_id = request.query_params.get('staff_id')
+        date_str = request.query_params.get('date')
+
+        if not all([salon_id, service_id, staff_id, date_str]):
+            return Response({
+                'success': False,
+                'message': 'Missing required query parameters: salon_id, service_id, staff_id, date'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        result = AvailabilityEngine.get_available_slots(salon_id, service_id, staff_id, date_str)
+        return Response(result, status=status.HTTP_200_OK if result['success'] else status.HTTP_400_BAD_REQUEST)
+
+
+class AppointmentViewSet(viewsets.ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action in ['create']:
+            return AppointmentCreateSerializer
+        return AppointmentSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = Appointment.objects.all()
+
+        if user.role == 'ADMIN':
+            pass
+        elif user.role in ['SALON_OWNER', 'SALON_MANAGER']:
+            qs = qs.filter(salon__owner=user)
+        elif user.role == 'STAFF':
+            qs = qs.filter(models.Q(staff__user=user) | models.Q(staff__email=user.email))
+        else:
+            qs = qs.filter(customer=user)
+
+        salon_id = self.request.query_params.get('salon_id')
+        status_param = self.request.query_params.get('status')
+        date_param = self.request.query_params.get('date')
+
+        if salon_id:
+            qs = qs.filter(salon_id=salon_id)
+        if status_param:
+            qs = qs.filter(status=status_param)
+        if date_param:
+            qs = qs.filter(appointment_date=date_param)
+
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        salon = serializer.validated_data['salon']
+        service = serializer.validated_data['service']
+        staff = serializer.validated_data['staff']
+        apt_date = serializer.validated_data['appointment_date']
+        start_t = serializer.validated_data['start_time']
+
+        duration = datetime.timedelta(minutes=service.duration_minutes)
+        start_datetime = datetime.datetime.combine(apt_date, start_t)
+        end_t = (start_datetime + duration).time()
+
+        with transaction.atomic():
+            day_of_week = apt_date.weekday()
+            wh = WorkingHour.objects.filter(salon=salon, day_of_week=day_of_week).first()
+            if not wh or not wh.is_open:
+                return Response({
+                    'success': False,
+                    'message': 'Salon is closed on the selected date.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if start_t < wh.opening_time or end_t > wh.closing_time:
+                return Response({
+                    'success': False,
+                    'message': f'Appointment time is outside salon working hours ({wh.opening_time.strftime("%H:%M")} - {wh.closing_time.strftime("%H:%M")}).'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if StaffLeave.objects.filter(staff=staff, start_date__lte=apt_date, end_date__gte=apt_date).exists():
+                return Response({
+                    'success': False,
+                    'message': 'Selected stylist is on leave on this date.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            existing = Appointment.objects.select_for_update().filter(
+                staff=staff,
+                appointment_date=apt_date,
+                status__in=[Appointment.Status.PENDING, Appointment.Status.CONFIRMED]
+            )
+
+            for ex in existing:
+                if max(start_t, ex.start_time) < min(end_t, ex.end_time):
+                    return Response({
+                        'success': False,
+                        'message': 'Selected time slot has just been booked by another customer. Please choose another slot.'
+                    }, status=status.HTTP_409_CONFLICT)
+
+            appointment = Appointment.objects.create(
+                customer=request.user,
+                salon=salon,
+                service=service,
+                staff=staff,
+                appointment_date=apt_date,
+                start_time=start_t,
+                end_time=end_t,
+                price=service.price,
+                status=Appointment.Status.CONFIRMED,
+                notes=serializer.validated_data.get('notes', '')
+            )
+
+        return Response({
+            'success': True,
+            'message': 'Appointment booked successfully!',
+            'data': AppointmentSerializer(appointment).data
+        }, status=status.HTTP_201_CREATED)
+
+    def partial_update(self, request, *args, **kwargs):
+        appointment = self.get_object()
+        user = request.user
+
+        if user.role == 'STAFF':
+            # Verify appointment belongs to this staff member
+            if appointment.staff.user != user and appointment.staff.email != user.email:
+                return Response({
+                    'success': False,
+                    'message': 'Permission denied. You can only update appointments assigned to you.'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+        return super().partial_update(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def cancel(self, request, pk=None):
+        appointment = self.get_object()
+        user = request.user
+
+        if user != appointment.customer and user.role not in ['SALON_OWNER', 'SALON_MANAGER', 'ADMIN', 'STAFF']:
+            return Response({
+                'success': False,
+                'message': 'Permission denied'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        if user.role == 'STAFF' and appointment.staff.user != user and appointment.staff.email != user.email:
+            return Response({
+                'success': False,
+                'message': 'Permission denied'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        if appointment.status == Appointment.Status.CANCELLED:
+            return Response({
+                'success': False,
+                'message': 'Appointment is already cancelled'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        appointment.status = Appointment.Status.CANCELLED
+        appointment.save()
+
+        return Response({
+            'success': True,
+            'message': 'Appointment cancelled successfully',
+            'data': AppointmentSerializer(appointment).data
+        })

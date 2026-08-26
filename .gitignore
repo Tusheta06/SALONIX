@@ -1,0 +1,36 @@
+# Environment variables
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+venv/
+.venv/
+backend/venv/
+
+# Node
+node_modules/
+web/node_modules/
+mobile/node_modules/
+
+# Build files
+dist/
+build/
+
+# Vite
+web/.vite/
+
+# Expo
+.expo/
+mobile/.expo/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
