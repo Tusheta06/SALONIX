@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from salons.models import Salon
 from .models import Review
 from .serializers import ReviewSerializer
+from notifications.utils import create_notification
+from notifications.models import NotificationType
 
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
@@ -19,6 +21,31 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         review = serializer.save(customer=self.request.user)
         self.update_salon_rating(review.salon)
+
+        # Fail-safe notifications
+        try:
+            salon = review.salon
+            customer = self.request.user
+            # Notify customer
+            create_notification(
+                user=customer,
+                title='Review Submitted',
+                message=f'Thank you for submitting a {review.rating}-star review for {salon.name}.',
+                notification_type=NotificationType.REVIEW_SUBMITTED,
+                related_salon=salon,
+                related_appointment=review.appointment,
+            )
+            # Notify salon owner
+            create_notification(
+                user=salon.owner,
+                title='New Review',
+                message=f'{customer.full_name} left a {review.rating}-star review for {salon.name}.',
+                notification_type=NotificationType.NEW_REVIEW,
+                related_salon=salon,
+                related_appointment=review.appointment,
+            )
+        except Exception:
+            pass
 
     def perform_update(self, serializer):
         review = serializer.save()

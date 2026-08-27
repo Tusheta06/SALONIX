@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Scissors, User, LogOut, Calendar, LayoutDashboard, Shield, UserCheck, Menu, X } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
@@ -83,6 +84,9 @@ export const Navbar = () => {
                   </Link>
                 )}
 
+                {/* Notification Bell */}
+                <NotificationBell />
+
                 <div className="flex items-center space-x-3 border-l pl-4 border-gray-200">
                   <Link
                     to={user.role === 'STAFF' ? '/staff/profile' : '/profile'}
@@ -121,8 +125,9 @@ export const Navbar = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center">
+          {/* Mobile Menu Button + Notification Bell */}
+          <div className="md:hidden flex items-center space-x-2">
+            {user && <NotificationBell />}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="text-gray-600 hover:text-pink-600 p-2"

@@ -8,6 +8,8 @@ from .serializers import (
     CustomTokenObtainPairSerializer,
     UserDetailSerializer
 )
+from notifications.utils import notify_admins
+from notifications.models import NotificationType
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -21,6 +23,18 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+
+        # If registered user is a salon owner, notify admins
+        if user.role == 'SALON_OWNER':
+            try:
+                notify_admins(
+                    title='New Salon Owner Registered',
+                    message=f'A new salon owner ({user.full_name} - {user.email}) has registered on Salonix.',
+                    notification_type=NotificationType.NEW_OWNER_REGISTERED,
+                )
+            except Exception:
+                pass
+
         return Response({
             'success': True,
             'message': 'User registered successfully',

@@ -13,6 +13,7 @@ urlpatterns = [
     path('api/', include('salons.urls')),
     path('api/', include('appointments.urls')),
     path('api/', include('reviews.urls')),
+    path('api/', include('notifications.urls')),
     path('api/admin/stats/', AdminDashboardStatsView.as_view(), name='admin_stats'),
 
     # Swagger / OpenAPI Documentation

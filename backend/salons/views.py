@@ -15,6 +15,8 @@ from .serializers import (
     WorkingHourSerializer,
     StaffLeaveSerializer
 )
+from notifications.utils import create_notification, notify_admins
+from notifications.models import NotificationType
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.filter(is_active=True)
@@ -77,11 +79,22 @@ class SalonViewSet(viewsets.ModelViewSet):
         if Salon.objects.filter(owner=user).exists():
             raise permissions.exceptions.ValidationError({'detail': 'You already have a registered salon.'})
         
-        serializer.save(
+        salon = serializer.save(
             owner=user,
             approval_status=Salon.ApprovalStatus.PENDING,
             is_approved=False
         )
+
+        # Notify admins about newly submitted salon
+        try:
+            notify_admins(
+                title='New Salon Submitted',
+                message=f'Salon "{salon.name}" has been submitted for approval by {user.full_name}.',
+                notification_type=NotificationType.SALON_SUBMITTED,
+                related_salon=salon,
+            )
+        except Exception:
+            pass
 
     @action(detail=False, methods=['get'], permission_classes=[IsSalonOwnerOrManager])
     def my_salon(self, request):
@@ -105,6 +118,19 @@ class SalonViewSet(viewsets.ModelViewSet):
         salon.is_approved = True
         salon.rejection_reason = ''
         salon.save()
+
+        # Notify salon owner
+        try:
+            create_notification(
+                user=salon.owner,
+                title='Salon Approved',
+                message=f'Congratulations! Your salon "{salon.name}" has been approved and is now live on Salonix.',
+                notification_type=NotificationType.SALON_APPROVED,
+                related_salon=salon,
+            )
+        except Exception:
+            pass
+
         return Response({
             'success': True,
             'message': f'Salon "{salon.name}" has been approved.',
@@ -118,6 +144,19 @@ class SalonViewSet(viewsets.ModelViewSet):
         salon.is_approved = False
         salon.rejection_reason = request.data.get('reason', 'Requirements not met.')
         salon.save()
+
+        # Notify salon owner
+        try:
+            create_notification(
+                user=salon.owner,
+                title='Salon Rejected',
+                message=f'Your salon "{salon.name}" application was rejected. Reason: {salon.rejection_reason}',
+                notification_type=NotificationType.SALON_REJECTED,
+                related_salon=salon,
+            )
+        except Exception:
+            pass
+
         return Response({
             'success': True,
             'message': f'Salon "{salon.name}" has been rejected.',

@@ -9,6 +9,8 @@ from salons.models import Service, Staff, WorkingHour, StaffLeave
 from .models import Appointment
 from .serializers import AppointmentSerializer, AppointmentCreateSerializer
 from .services import AvailabilityEngine
+from notifications.utils import create_notification, notify_admins, format_appointment_datetime
+from notifications.models import NotificationType
 
 class AvailabilityView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -132,6 +134,35 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 notes=serializer.validated_data.get('notes', '')
             )
 
+        # Fail-safe notification: do NOT let this break the booking
+        try:
+            date_str, time_str = format_appointment_datetime(appointment)
+            # Notify customer — "Booking Pending" semantics (awaiting salon's attention)
+            create_notification(
+                user=request.user,
+                title='Booking Confirmed',
+                message=(
+                    f'Your appointment at {salon.name} for {service.name} '
+                    f'on {date_str} at {time_str} has been confirmed.'
+                ),
+                notification_type=NotificationType.BOOKING_CONFIRMED,
+                related_appointment=appointment,
+                related_salon=salon,
+            )
+            # Notify salon owner
+            create_notification(
+                user=salon.owner,
+                title='New Appointment',
+                message=(
+                    f'A customer booked {service.name} on {date_str} at {time_str}.'
+                ),
+                notification_type=NotificationType.NEW_APPOINTMENT,
+                related_appointment=appointment,
+                related_salon=salon,
+            )
+        except Exception:
+            pass  # Never let notification failure break the booking
+
         return Response({
             'success': True,
             'message': 'Appointment booked successfully!',
@@ -150,7 +181,59 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     'message': 'Permission denied. You can only update appointments assigned to you.'
                 }, status=status.HTTP_403_FORBIDDEN)
 
-        return super().partial_update(request, *args, **kwargs)
+        old_status = appointment.status
+        response = super().partial_update(request, *args, **kwargs)
+
+        # Fail-safe: detect status change and send appropriate notifications
+        try:
+            appointment.refresh_from_db()
+            new_status = appointment.status
+            if old_status != new_status:
+                date_str, time_str = format_appointment_datetime(appointment)
+                salon = appointment.salon
+                service = appointment.service
+                customer = appointment.customer
+
+                if new_status == Appointment.Status.CONFIRMED:
+                    create_notification(
+                        user=customer,
+                        title='Booking Confirmed',
+                        message=(
+                            f'Your appointment at {salon.name} for {service.name} '
+                            f'on {date_str} at {time_str} has been confirmed.'
+                        ),
+                        notification_type=NotificationType.BOOKING_CONFIRMED,
+                        related_appointment=appointment,
+                        related_salon=salon,
+                    )
+                elif new_status == Appointment.Status.COMPLETED:
+                    create_notification(
+                        user=customer,
+                        title='Appointment Completed',
+                        message=(
+                            f'Your appointment at {salon.name} for {service.name} '
+                            f'on {date_str} at {time_str} has been marked as completed. Thank you!'
+                        ),
+                        notification_type=NotificationType.BOOKING_COMPLETED,
+                        related_appointment=appointment,
+                        related_salon=salon,
+                    )
+                elif new_status == Appointment.Status.CANCELLED:
+                    create_notification(
+                        user=customer,
+                        title='Appointment Cancelled',
+                        message=(
+                            f'Your appointment at {salon.name} for {service.name} '
+                            f'on {date_str} at {time_str} has been cancelled.'
+                        ),
+                        notification_type=NotificationType.BOOKING_CANCELLED,
+                        related_appointment=appointment,
+                        related_salon=salon,
+                    )
+        except Exception:
+            pass  # Never let notification failure break the update
+
+        return response
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def cancel(self, request, pk=None):
@@ -177,6 +260,54 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         appointment.status = Appointment.Status.CANCELLED
         appointment.save()
+
+        # Fail-safe notifications on cancellation
+        try:
+            date_str, time_str = format_appointment_datetime(appointment)
+            salon = appointment.salon
+            service = appointment.service
+            customer = appointment.customer
+
+            if user == customer:
+                # Customer cancelled -> notify salon owner
+                create_notification(
+                    user=salon.owner,
+                    title='Appointment Cancelled',
+                    message=(
+                        f'Customer {customer.full_name} cancelled appointment for {service.name} '
+                        f'on {date_str} at {time_str}.'
+                    ),
+                    notification_type=NotificationType.APPOINTMENT_CANCELLED_BY_CUSTOMER,
+                    related_appointment=appointment,
+                    related_salon=salon,
+                )
+                # Also notify customer confirmation of cancellation
+                create_notification(
+                    user=customer,
+                    title='Booking Cancelled',
+                    message=(
+                        f'Your appointment at {salon.name} for {service.name} '
+                        f'on {date_str} at {time_str} has been cancelled.'
+                    ),
+                    notification_type=NotificationType.BOOKING_CANCELLED,
+                    related_appointment=appointment,
+                    related_salon=salon,
+                )
+            else:
+                # Salon owner / staff / admin cancelled -> notify customer
+                create_notification(
+                    user=customer,
+                    title='Appointment Cancelled',
+                    message=(
+                        f'Your appointment at {salon.name} for {service.name} '
+                        f'on {date_str} at {time_str} has been cancelled by the salon.'
+                    ),
+                    notification_type=NotificationType.BOOKING_CANCELLED,
+                    related_appointment=appointment,
+                    related_salon=salon,
+                )
+        except Exception:
+            pass  # Never let notification failure break cancellation
 
         return Response({
             'success': True,
