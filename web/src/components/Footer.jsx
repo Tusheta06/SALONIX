@@ -40,12 +40,12 @@ export const Footer = () => {
 
           {/* Customer Support */}
           <div>
-            <h4 className="text-white font-semibold text-base mb-4">Support & Legal</h4>
+            <h4 className="text-white font-semibold text-base mb-4">Support &amp; Legal</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="hover:text-pink-400 transition">Help Center & FAQ</a></li>
-              <li><a href="#" className="hover:text-pink-400 transition">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-pink-400 transition">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-pink-400 transition">Cancellation Policy</a></li>
+              <li><Link to="/help" className="hover:text-pink-400 transition">Help Center &amp; FAQ</Link></li>
+              <li><Link to="/privacy-policy" className="hover:text-pink-400 transition">Privacy Policy</Link></li>
+              <li><Link to="/terms-of-service" className="hover:text-pink-400 transition">Terms of Service</Link></li>
+              <li><Link to="/cancellation-policy" className="hover:text-pink-400 transition">Cancellation Policy</Link></li>
             </ul>
           </div>
 

@@ -11,6 +11,12 @@ import { HowItWorks } from '../pages/marketing/HowItWorks';
 import { ForSalons } from '../pages/marketing/ForSalons';
 import { Contact } from '../pages/marketing/Contact';
 
+// Legal / Support Pages
+import { HelpCenter } from '../pages/legal/HelpCenter';
+import { PrivacyPolicy } from '../pages/legal/PrivacyPolicy';
+import { TermsOfService } from '../pages/legal/TermsOfService';
+import { CancellationPolicy } from '../pages/legal/CancellationPolicy';
+
 // Auth Pages
 import { Login } from '../pages/auth/Login';
 import { Register } from '../pages/auth/Register';
@@ -78,6 +84,10 @@ export const AppRoutes = () => {
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/for-salons" element={<ForSalons />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/help" element={<HelpCenter />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/cancellation-policy" element={<CancellationPolicy />} />
           
           {/* Auth */}
           <Route path="/login" element={<Login />} />
