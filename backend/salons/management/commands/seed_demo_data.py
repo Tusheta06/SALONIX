@@ -12,23 +12,55 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS('Starting demo data seeding...'))
 
-        # 1. Create Users
         demo_password = 'password123'
 
-        admin_user, _ = User.objects.get_or_create(
-            email='admin@salonix.demo',
+        # 1. Create Core Users
+        # Admins
+        for admin_email in ['admin@salonix.com', 'admin@salonix.demo']:
+            u, _ = User.objects.get_or_create(
+                email=admin_email,
+                defaults={
+                    'first_name': 'Platform',
+                    'last_name': 'Admin',
+                    'phone': '+91 9876543210',
+                    'role': User.Role.ADMIN,
+                    'is_staff': True,
+                    'is_superuser': True
+                }
+            )
+            u.set_password(demo_password)
+            u.save()
+
+        # Customers
+        for cust_email in ['customer@test.com', 'customer@salonix.demo']:
+            u, _ = User.objects.get_or_create(
+                email=cust_email,
+                defaults={
+                    'first_name': 'Priya',
+                    'last_name': 'Verma',
+                    'phone': '+91 9876543212',
+                    'role': User.Role.CUSTOMER
+                }
+            )
+            u.set_password(demo_password)
+            u.save()
+            CustomerProfile.objects.get_or_create(user=u)
+
+        # Salon Owner with NO salon (tusheta@salonix.com for testing new salon creation workflow)
+        owner_tusheta, _ = User.objects.get_or_create(
+            email='tusheta@salonix.com',
             defaults={
-                'first_name': 'Platform',
-                'last_name': 'Admin',
-                'phone': '+91 9876543210',
-                'role': User.Role.ADMIN,
-                'is_staff': True,
-                'is_superuser': True
+                'first_name': 'Tusheta',
+                'last_name': 'Owner',
+                'phone': '+91 9876500000',
+                'role': User.Role.SALON_OWNER
             }
         )
-        admin_user.set_password(demo_password)
-        admin_user.save()
+        owner_tusheta.set_password(demo_password)
+        owner_tusheta.save()
+        SalonOwnerProfile.objects.get_or_create(user=owner_tusheta)
 
+        # Salon Owner with existing demo salon (owner@salonix.demo)
         owner_user, _ = User.objects.get_or_create(
             email='owner@salonix.demo',
             defaults={
@@ -42,32 +74,7 @@ class Command(BaseCommand):
         owner_user.save()
         SalonOwnerProfile.objects.get_or_create(user=owner_user)
 
-        customer_user, _ = User.objects.get_or_create(
-            email='customer@salonix.demo',
-            defaults={
-                'first_name': 'Priya',
-                'last_name': 'Verma',
-                'phone': '+91 9876543212',
-                'role': User.Role.CUSTOMER
-            }
-        )
-        customer_user.set_password(demo_password)
-        customer_user.save()
-        CustomerProfile.objects.get_or_create(user=customer_user)
-
-        customer2, _ = User.objects.get_or_create(
-            email='customer2@salonix.demo',
-            defaults={
-                'first_name': 'Aarav',
-                'last_name': 'Patel',
-                'phone': '+91 9876543213',
-                'role': User.Role.CUSTOMER
-            }
-        )
-        customer2.set_password(demo_password)
-        customer2.save()
-        CustomerProfile.objects.get_or_create(user=customer2)
-
+        # Staff user
         stylist_user, _ = User.objects.get_or_create(
             email='stylist@salonix.demo',
             defaults={
@@ -103,7 +110,7 @@ class Command(BaseCommand):
 
         self.stdout.write('Created categories.')
 
-        # 3. Create Salons & Details
+        # 3. Create Demo Approved Salons for owner@salonix.demo
         salons_info = [
             {
                 'name': 'Luxe & Glow Beauty Lounge',
@@ -146,66 +153,6 @@ class Command(BaseCommand):
                     ('Rohan Mehta', 'Beard & Fade Master', 7, None),
                     ('Karan Nair', 'Senior Barber', 4, None)
                 ]
-            },
-            {
-                'name': 'Serene Spa & Wellness Hub',
-                'description': 'Tranquil sanctuary for body massage, ayurvedic therapies, aromatherapy, and facial rejuvenation.',
-                'address': '88 Greater Kailash 1',
-                'city': 'Delhi',
-                'state': 'Delhi',
-                'postal_code': '110048',
-                'phone': '+91 9811044556',
-                'email': 'hello@serenespa.in',
-                'rating': 4.90,
-                'services': [
-                    ('Aromatherapy Full Body Spa', 'Spa & Massage', 3200.00, 90),
-                    ('Deep Tissue De-Stress Spa', 'Spa & Massage', 3800.00, 90),
-                    ('Hydra-Peel Radiance Facial', 'Facial & Skincare', 2800.00, 60)
-                ],
-                'staff': [
-                    ('Suma Sharma', 'Aromatherapist', 9, None),
-                    ('Ritu Gupta', 'Facial Specialist', 6, None)
-                ]
-            },
-            {
-                'name': 'Glamour Edge Hair Studio',
-                'description': 'Contemporary hair salon renowned for creative cuts, KERATIN smoothing, and fashion hair colors.',
-                'address': '55 Jubilee Hills Rd 36',
-                'city': 'Hyderabad',
-                'state': 'Telangana',
-                'postal_code': '500033',
-                'phone': '+91 9885033445',
-                'email': 'jubilee@glamouredge.com',
-                'rating': 4.65,
-                'services': [
-                    ('Keratin Hair Smoothing Therapy', 'Hair Coloring', 6500.00, 150),
-                    ('Precision Layer Cut', 'Haircut & Styling', 900.00, 45),
-                    ('Party Glam Makeup', 'Makeup', 3000.00, 60)
-                ],
-                'staff': [
-                    ('David Fernandez', 'Creative Art Director', 12, None),
-                    ('Sneha Reddy', 'Senior Hair Stylist', 5, None)
-                ]
-            },
-            {
-                'name': 'Velvet Touch Nail & Skin Care',
-                'description': 'Boutique beauty salon offering pampering manicure, pedicure, skin whitening, and party makeup.',
-                'address': '10 Koregaon Park Main Rd',
-                'city': 'Pune',
-                'state': 'Maharashtra',
-                'postal_code': '411001',
-                'phone': '+91 9822077665',
-                'email': 'info@velvettouch.com',
-                'rating': 4.80,
-                'services': [
-                    ('Luxury Rose Spa Pedicure', 'Nails & Pedicure', 950.00, 45),
-                    ('Acrylic Nail Extensions', 'Nails & Pedicure', 2200.00, 75),
-                    ('Bridal Glow Facial & Cleanup', 'Bridal Packages', 4000.00, 90)
-                ],
-                'staff': [
-                    ('Pooja Joshi', 'Nail Artist & Esthetician', 6, None),
-                    ('Tanya Singhania', 'Makeup & Skin Expert', 8, None)
-                ]
             }
         ]
 
@@ -227,12 +174,12 @@ class Command(BaseCommand):
                     'email': info['email'],
                     'rating': info['rating'],
                     'is_active': True,
-                    'is_approved': True
+                    'is_approved': True,
+                    'approval_status': Salon.ApprovalStatus.APPROVED
                 }
             )
             created_salons.append(salon_obj)
 
-            # Create working hours (Mon-Sat 09:00-19:00, Sun 10:00-17:00)
             for day in range(7):
                 is_open = True
                 open_t = '09:00:00' if day < 6 else '10:00:00'
@@ -243,7 +190,6 @@ class Command(BaseCommand):
                     defaults={'is_open': is_open, 'opening_time': open_t, 'closing_time': close_t}
                 )
 
-            # Create services
             for s_name, cat_name, price, duration in info['services']:
                 cat = categories_dict.get(cat_name)
                 srv, _ = Service.objects.get_or_create(
@@ -259,7 +205,6 @@ class Command(BaseCommand):
                 )
                 created_services.append(srv)
 
-            # Create staff
             for st_name, spec, exp, user_obj in info['staff']:
                 st_member, _ = Staff.objects.get_or_create(
                     salon=salon_obj,
@@ -275,81 +220,4 @@ class Command(BaseCommand):
                 )
                 created_staff.append(st_member)
 
-        self.stdout.write(f'Created {len(created_salons)} salons, services, and staff.')
-
-        # 4. Create Staff Leave
-        first_staff = created_staff[0]
-        today = timezone.now().date()
-        StaffLeave.objects.get_or_create(
-            staff=first_staff,
-            start_date=today + datetime.timedelta(days=10),
-            end_date=today + datetime.timedelta(days=12),
-            defaults={'reason': 'Annual Vacation'}
-        )
-
-        # 5. Create Sample Appointments & Reviews
-        main_salon = created_salons[0]
-        main_service = main_salon.services.first()
-        main_staff = main_salon.staff.first()
-
-        # Completed Appointment with Review
-        past_date = today - datetime.timedelta(days=3)
-        apt_completed, _ = Appointment.objects.get_or_create(
-            customer=customer_user,
-            salon=main_salon,
-            service=main_service,
-            staff=main_staff,
-            appointment_date=past_date,
-            start_time=datetime.time(11, 0),
-            defaults={
-                'end_time': datetime.time(11, 45),
-                'price': main_service.price,
-                'status': Appointment.Status.COMPLETED,
-                'notes': 'Customer requested extra hair shine treatment.'
-            }
-        )
-
-        Review.objects.get_or_create(
-            appointment=apt_completed,
-            defaults={
-                'customer': customer_user,
-                'salon': main_salon,
-                'rating': 5,
-                'comment': 'Awesome experience! Ananya did a fantastic haircut and blowout.'
-            }
-        )
-
-        # Confirmed Upcoming Appointment
-        future_date = today + datetime.timedelta(days=2)
-        Appointment.objects.get_or_create(
-            customer=customer_user,
-            salon=main_salon,
-            service=main_service,
-            staff=main_staff,
-            appointment_date=future_date,
-            start_time=datetime.time(14, 0),
-            defaults={
-                'end_time': datetime.time(14, 45),
-                'price': main_service.price,
-                'status': Appointment.Status.CONFIRMED,
-                'notes': 'Please hold the slot.'
-            }
-        )
-
-        # Pending Appointment for second customer
-        Appointment.objects.get_or_create(
-            customer=customer2,
-            salon=created_salons[1],
-            service=created_salons[1].services.first(),
-            staff=created_salons[1].staff.first(),
-            appointment_date=future_date,
-            start_time=datetime.time(10, 0),
-            defaults={
-                'end_time': datetime.time(10, 30),
-                'price': created_salons[1].services.first().price,
-                'status': Appointment.Status.PENDING,
-                'notes': 'First time visit.'
-            }
-        )
-
-        self.stdout.write(self.style.SUCCESS('Successfully seeded all demo data for Salonix!'))
+        self.stdout.write(self.style.SUCCESS('Successfully seeded demo data!'))

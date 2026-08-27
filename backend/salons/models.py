@@ -18,6 +18,11 @@ class Category(models.Model):
 
 
 class Salon(models.Model):
+    class ApprovalStatus(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        APPROVED = 'APPROVED', 'Approved'
+        REJECTED = 'REJECTED', 'Rejected'
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -36,7 +41,14 @@ class Salon(models.Model):
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0, db_index=True)
     is_active = models.BooleanField(default=True, db_index=True)
-    is_approved = models.BooleanField(default=True, db_index=True)
+    is_approved = models.BooleanField(default=False, db_index=True)
+    approval_status = models.CharField(
+        max_length=20,
+        choices=ApprovalStatus.choices,
+        default=ApprovalStatus.PENDING,
+        db_index=True
+    )
+    rejection_reason = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -44,6 +56,11 @@ class Salon(models.Model):
         ordering = ['-rating', 'name']
 
     def save(self, *args, **kwargs):
+        if self.approval_status == self.ApprovalStatus.APPROVED:
+            self.is_approved = True
+        else:
+            self.is_approved = False
+
         if not self.slug:
             base_slug = slugify(self.name)
             slug = base_slug
@@ -55,7 +72,7 @@ class Salon(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} [{self.approval_status}]"
 
 
 class SalonImage(models.Model):

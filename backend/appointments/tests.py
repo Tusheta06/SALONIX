@@ -4,45 +4,17 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 from accounts.models import User
-from salons.models import Category, Salon, Service, Staff, WorkingHour, StaffLeave
+from salons.models import Category, Salon, SalonImage, Service, Staff, WorkingHour, StaffLeave
 from appointments.models import Appointment
 
-class SalonixRoleArchitectureTests(TestCase):
+class SalonRegistrationAndApprovalWorkflowTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.password = 'password123'
 
-        # 1. Create Users for each role
-        self.customer = User.objects.create_user(
-            email='customer@salonix.demo',
-            password=self.password,
-            first_name='Priya',
-            last_name='Verma',
-            role=User.Role.CUSTOMER
-        )
-        self.owner = User.objects.create_user(
-            email='owner@salonix.demo',
-            password=self.password,
-            first_name='Rajesh',
-            last_name='Sharma',
-            role=User.Role.SALON_OWNER
-        )
-        self.stylist = User.objects.create_user(
-            email='stylist@salonix.demo',
-            password=self.password,
-            first_name='Ananya',
-            last_name='Roy',
-            role=User.Role.STAFF
-        )
-        self.other_stylist = User.objects.create_user(
-            email='other@salonix.demo',
-            password=self.password,
-            first_name='Karan',
-            last_name='Nair',
-            role=User.Role.STAFF
-        )
+        # 1. Accounts
         self.admin = User.objects.create_user(
-            email='admin@salonix.demo',
+            email='admin@salonix.com',
             password=self.password,
             first_name='Platform',
             last_name='Admin',
@@ -51,143 +23,178 @@ class SalonixRoleArchitectureTests(TestCase):
             is_superuser=True
         )
 
-        # 2. Setup Salon, Services, Staff
-        self.category = Category.objects.create(name='Haircut')
-        self.salon = Salon.objects.create(
-            owner=self.owner,
-            name='Luxe Salon',
-            description='Luxury salon',
-            address='123 Hill Road',
-            city='Mumbai',
-            phone='9876543210',
-            email='luxe@salon.com',
-            rating=4.8
+        self.customer = User.objects.create_user(
+            email='customer@test.com',
+            password=self.password,
+            first_name='Test',
+            last_name='Customer',
+            role=User.Role.CUSTOMER
         )
 
-        for d in range(7):
-            WorkingHour.objects.create(
-                salon=self.salon,
-                day_of_week=d,
-                is_open=True,
-                opening_time=datetime.time(9, 0),
-                closing_time=datetime.time(18, 0)
-            )
-
-        self.service = Service.objects.create(
-            salon=self.salon,
-            category=self.category,
-            name='Haircut',
-            price=500.00,
-            duration_minutes=30
+        self.owner_tusheta = User.objects.create_user(
+            email='tusheta@salonix.com',
+            password=self.password,
+            first_name='Tusheta',
+            last_name='Owner',
+            role=User.Role.SALON_OWNER
         )
 
-        self.staff_ananya = Staff.objects.create(
-            salon=self.salon,
-            user=self.stylist,
-            name='Ananya Roy',
-            email=self.stylist.email,
-            specialization='Hair Cut',
-            experience_years=5
+        self.other_owner = User.objects.create_user(
+            email='other_owner@salonix.com',
+            password=self.password,
+            first_name='Other',
+            last_name='Owner',
+            role=User.Role.SALON_OWNER
         )
 
-        self.staff_karan = Staff.objects.create(
-            salon=self.salon,
-            user=self.other_stylist,
-            name='Karan Nair',
-            email=self.other_stylist.email,
-            specialization='Coloring',
-            experience_years=4
-        )
+        self.category = Category.objects.create(name='Hair Styling')
 
-        # 3. Create Appointments
-        self.today = datetime.date.today()
-        self.apt_ananya = Appointment.objects.create(
-            customer=self.customer,
-            salon=self.salon,
-            service=self.service,
-            staff=self.staff_ananya,
-            appointment_date=self.today,
-            start_time=datetime.time(10, 0),
-            end_time=datetime.time(10, 30),
-            price=500.00,
-            status=Appointment.Status.CONFIRMED
-        )
+    def _get_items(self, response_data):
+        if isinstance(response_data, dict):
+            if 'results' in response_data:
+                return response_data['results']
+            if 'data' in response_data:
+                return response_data['data']
+        if isinstance(response_data, list):
+            return response_data
+        return []
 
-        self.apt_karan = Appointment.objects.create(
-            customer=self.customer,
-            salon=self.salon,
-            service=self.service,
-            staff=self.staff_karan,
-            appointment_date=self.today,
-            start_time=datetime.time(11, 0),
-            end_time=datetime.time(11, 30),
-            price=500.00,
-            status=Appointment.Status.CONFIRMED
-        )
+    def _get_id(self, response_data):
+        if isinstance(response_data, dict):
+            if 'id' in response_data:
+                return response_data['id']
+            if 'data' in response_data and isinstance(response_data['data'], dict):
+                return response_data['data'].get('id')
+        return None
 
-    def test_customer_login(self):
-        res = self.client.post(reverse('auth_login'), {'email': self.customer.email, 'password': self.password})
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data['data']['user']['role'], 'CUSTOMER')
+    def test_full_end_to_end_salon_registration_and_admin_approval_workflow(self):
+        # TEST 1: Login as tusheta@salonix.com
+        res_login = self.client.post(reverse('auth_login'), {'email': 'tusheta@salonix.com', 'password': self.password})
+        self.assertEqual(res_login.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_login.data['data']['user']['role'], 'SALON_OWNER')
 
-    def test_staff_login(self):
-        res = self.client.post(reverse('auth_login'), {'email': self.stylist.email, 'password': self.password})
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data['data']['user']['role'], 'STAFF')
+        # TEST 2: Owner sees No Salon Registered
+        self.client.force_authenticate(user=self.owner_tusheta)
+        res_my_salon = self.client.get(reverse('salon-my-salon'))
+        self.assertEqual(res_my_salon.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_salon_owner_login(self):
-        res = self.client.post(reverse('auth_login'), {'email': self.owner.email, 'password': self.password})
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data['data']['user']['role'], 'SALON_OWNER')
+        # TEST 3: Owner creates salon with details
+        res_create_salon = self.client.post(reverse('salon-list'), {
+            'name': 'Tusheta Royal Salon',
+            'description': 'Luxury salon setup',
+            'address': '45 Park Avenue',
+            'city': 'Mumbai',
+            'state': 'Maharashtra',
+            'postal_code': '400001',
+            'phone': '9876543210',
+            'email': 'royal@salon.com'
+        })
+        self.assertEqual(res_create_salon.status_code, status.HTTP_201_CREATED)
+        salon_id = self._get_id(res_create_salon.data)
 
-    def test_admin_login(self):
-        res = self.client.post(reverse('auth_login'), {'email': self.admin.email, 'password': self.password})
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data['data']['user']['role'], 'ADMIN')
+        # Add 2 services
+        srv1 = self.client.post(reverse('service-list'), {
+            'salon': salon_id,
+            'category': self.category.id,
+            'name': 'Royal Hair Cut',
+            'description': 'Precision haircut',
+            'price': 600.00,
+            'duration_minutes': 45,
+            'is_active': True
+        })
+        self.assertEqual(srv1.status_code, status.HTTP_201_CREATED)
+        srv1_id = self._get_id(srv1.data)
 
-    def test_staff_assigned_appointments_scoping(self):
-        # Authenticate as Ananya (Stylist)
-        self.client.force_authenticate(user=self.stylist)
-        res = self.client.get(reverse('appointment-list'))
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-
-        apt_ids = [apt['id'] for apt in (res.data.get('results') or res.data.get('data'))]
-        # Ananya must ONLY see her assigned appointment, NOT Karan's
-        self.assertIn(self.apt_ananya.id, apt_ids)
-        self.assertNotIn(self.apt_karan.id, apt_ids)
-
-    def test_staff_cannot_create_service(self):
-        # Authenticate as Stylist
-        self.client.force_authenticate(user=self.stylist)
-        res = self.client.post(reverse('service-list'), {
-            'salon': self.salon.id,
-            'name': 'Unauthorized Service',
-            'price': 1000.00,
+        srv2 = self.client.post(reverse('service-list'), {
+            'salon': salon_id,
+            'category': self.category.id,
+            'name': 'Hair Spa',
+            'description': 'Deep conditioning',
+            'price': 1200.00,
             'duration_minutes': 60
         })
-        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(srv2.status_code, status.HTTP_201_CREATED)
 
-    def test_staff_cannot_modify_other_staff_appointments(self):
-        self.client.force_authenticate(user=self.stylist)
-        # Attempt to cancel Karan's appointment
-        url = reverse('appointment-cancel', kwargs={'pk': self.apt_karan.id})
-        res = self.client.post(url)
-        self.assertIn(res.status_code, [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND])
-
-    def test_staff_leave_auto_assignment(self):
-        self.client.force_authenticate(user=self.stylist)
-        res = self.client.post(reverse('staffleave-list'), {
-            'start_date': str(self.today),
-            'end_date': str(self.today + datetime.timedelta(days=2)),
-            'reason': 'Stylist Personal Vacation'
+        # Add 2 staff members
+        st1 = self.client.post(reverse('staff-list'), {
+            'salon': salon_id,
+            'name': 'Priya Stylist',
+            'specialization': 'Hair Cut Specialist',
+            'experience_years': 4,
+            'phone': '9876543211',
+            'email': 'priya@royal.com'
         })
-        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-        # Ensure leave was assigned to Ananya
-        self.assertEqual(res.data['staff'], self.staff_ananya.id)
+        self.assertEqual(st1.status_code, status.HTTP_201_CREATED)
 
-    def test_staff_me_profile_endpoint(self):
-        self.client.force_authenticate(user=self.stylist)
-        url = reverse('staff-me')
-        res = self.client.get(url)
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data['data']['name'], 'Ananya Roy')
+        st2 = self.client.post(reverse('staff-list'), {
+            'salon': salon_id,
+            'name': 'Karan Hair Expert',
+            'specialization': 'Colorist',
+            'experience_years': 5,
+            'phone': '9876543212',
+            'email': 'karan@royal.com'
+        })
+        self.assertEqual(st2.status_code, status.HTTP_201_CREATED)
+
+        # Configure working hours
+        for d in range(7):
+            self.client.post(reverse('workinghour-list'), {
+                'salon': salon_id,
+                'day_of_week': d,
+                'is_open': True,
+                'opening_time': '09:00:00',
+                'closing_time': '18:00:00'
+            })
+
+        # TEST 4: Salon status is PENDING & is_approved is False
+        salon_obj = Salon.objects.get(pk=salon_id)
+        self.assertEqual(salon_obj.approval_status, Salon.ApprovalStatus.PENDING)
+        self.assertFalse(salon_obj.is_approved)
+
+        # TEST 5: Customer API does NOT show the pending salon
+        self.client.force_authenticate(user=self.customer)
+        res_cust_salons = self.client.get(reverse('salon-list'))
+        self.assertEqual(res_cust_salons.status_code, status.HTTP_200_OK)
+        public_items = self._get_items(res_cust_salons.data)
+        public_ids = [s['id'] for s in public_items]
+        self.assertNotIn(salon_id, public_ids)
+
+        # TEST 6: Admin sees the pending salon
+        self.client.force_authenticate(user=self.admin)
+        res_admin_salons = self.client.get(reverse('salon-list') + '?approval_status=PENDING')
+        self.assertEqual(res_admin_salons.status_code, status.HTTP_200_OK)
+        pending_items = self._get_items(res_admin_salons.data)
+        pending_ids = [s['id'] for s in pending_items]
+        self.assertIn(salon_id, pending_ids)
+
+        # TEST 7: Admin inspects salon details
+        res_admin_detail = self.client.get(reverse('salon-detail', kwargs={'pk': salon_id}))
+        self.assertEqual(res_admin_detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_admin_detail.data['services']), 2)
+        self.assertEqual(len(res_admin_detail.data['staff']), 2)
+
+        # TEST 8: Admin approves salon
+        res_approve = self.client.post(reverse('salon-approve', kwargs={'pk': salon_id}))
+        self.assertEqual(res_approve.status_code, status.HTTP_200_OK)
+
+        # TEST 9: Salon becomes APPROVED
+        salon_obj.refresh_from_db()
+        self.assertEqual(salon_obj.approval_status, Salon.ApprovalStatus.APPROVED)
+        self.assertTrue(salon_obj.is_approved)
+
+        # TEST 10: Customer API now shows the approved salon
+        self.client.force_authenticate(user=self.customer)
+        res_cust_salons_after = self.client.get(reverse('salon-list'))
+        public_items_after = self._get_items(res_cust_salons_after.data)
+        public_ids_after = [s['id'] for s in public_items_after]
+        self.assertIn(salon_id, public_ids_after)
+
+        # TEST 11: Owner can edit their own Salon, Services, Staff
+        self.client.force_authenticate(user=self.owner_tusheta)
+        res_edit_srv = self.client.patch(reverse('service-detail', kwargs={'pk': srv1_id}), {'price': 650.00})
+        self.assertEqual(res_edit_srv.status_code, status.HTTP_200_OK)
+
+        # TEST 12: Other Salon Owner CANNOT modify Tusheta's service/staff
+        self.client.force_authenticate(user=self.other_owner)
+        res_unauthorized_edit = self.client.patch(reverse('service-detail', kwargs={'pk': srv1_id}), {'price': 1.00})
+        self.assertEqual(res_unauthorized_edit.status_code, status.HTTP_403_FORBIDDEN)

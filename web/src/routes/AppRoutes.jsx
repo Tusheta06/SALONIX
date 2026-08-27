@@ -23,6 +23,7 @@ import { MyBookings } from '../pages/customer/MyBookings';
 import { CustomerProfile } from '../pages/customer/CustomerProfile';
 
 // Salon Owner Pages
+import { CreateSalon } from '../pages/salon/CreateSalon';
 import { SalonDashboard } from '../pages/salon/SalonDashboard';
 import { SalonProfile } from '../pages/salon/SalonProfile';
 import { SalonServices } from '../pages/salon/SalonServices';
@@ -41,6 +42,7 @@ import { StaffProfile } from '../pages/staff/StaffProfile';
 // Admin Pages
 import { AdminDashboard } from '../pages/admin/AdminDashboard';
 import { AdminSalons } from '../pages/admin/AdminSalons';
+import { AdminSalonDetail } from '../pages/admin/AdminSalonDetail';
 import { AdminCategories } from '../pages/admin/AdminCategories';
 import { AdminCustomers } from '../pages/admin/AdminCustomers';
 
@@ -55,7 +57,6 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Redirect user to their default role dashboard
     if (user.role === 'STAFF') return <Navigate to="/staff/dashboard" replace />;
     if (user.role === 'SALON_OWNER' || user.role === 'SALON_MANAGER') return <Navigate to="/salon/dashboard" replace />;
     if (user.role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />;
@@ -103,7 +104,15 @@ export const AppRoutes = () => {
             }
           />
 
-          {/* Salon Owner / Manager Routes */}
+          {/* Salon Owner Routes */}
+          <Route
+            path="/owner/create-salon"
+            element={
+              <ProtectedRoute allowedRoles={['SALON_OWNER', 'SALON_MANAGER', 'ADMIN']}>
+                <CreateSalon />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/salon/dashboard"
             element={
@@ -161,7 +170,7 @@ export const AppRoutes = () => {
             }
           />
 
-          {/* Dedicated Staff / Stylist Routes */}
+          {/* Dedicated Staff Routes */}
           <Route
             path="/staff/dashboard"
             element={
@@ -213,14 +222,6 @@ export const AppRoutes = () => {
             }
           />
           <Route
-            path="/admin/customers"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminCustomers />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/admin/salons"
             element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
@@ -229,15 +230,15 @@ export const AppRoutes = () => {
             }
           />
           <Route
-            path="/admin/owners"
+            path="/admin/salons/:id"
             element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminCustomers />
+                <AdminSalonDetail />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/admin/staff"
+            path="/admin/customers"
             element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
                 <AdminCustomers />
@@ -249,30 +250,6 @@ export const AppRoutes = () => {
             element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
                 <AdminCategories />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/services"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminCategories />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/appointments"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/reviews"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminDashboard />
               </ProtectedRoute>
             }
           />
