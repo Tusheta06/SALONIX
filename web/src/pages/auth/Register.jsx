@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Scissors, Mail, Lock, User, Phone, AlertCircle, CheckCircle } from 'lucide-react';
@@ -12,12 +12,16 @@ export const Register = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const isSubmitting = useRef(false);
 
   const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting.current || loading) return;
+
+    isSubmitting.current = true;
     setError('');
     setLoading(true);
 
@@ -33,7 +37,7 @@ export const Register = () => {
       navigate('/login', { state: { registered: true } });
     } catch (err) {
       setError(err.message || 'Registration failed. Check your inputs.');
-    } finally {
+      isSubmitting.current = false;
       setLoading(false);
     }
   };

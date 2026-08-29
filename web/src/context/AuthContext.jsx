@@ -43,11 +43,35 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (payload) => {
-    const res = await api.post('/auth/register/', payload);
-    if (res.data.success) {
-      return res.data;
+    try {
+      const res = await api.post('/auth/register/', payload);
+      if (res.data.success) {
+        return res.data;
+      }
+      throw new Error(res.data.message || 'Registration failed');
+    } catch (err) {
+      if (err.response?.data) {
+        const data = err.response.data;
+        if (typeof data === 'string') {
+          throw new Error(data);
+        }
+        if (data.message) {
+          throw new Error(data.message);
+        }
+        if (typeof data === 'object') {
+          const messages = Object.entries(data)
+            .map(([key, val]) => {
+              const text = Array.isArray(val) ? val.join(' ') : String(val);
+              return `${key !== 'detail' && key !== 'error' ? `${key}: ` : ''}${text}`;
+            })
+            .join(' | ');
+          if (messages) {
+            throw new Error(messages);
+          }
+        }
+      }
+      throw new Error(err.message || 'Registration failed');
     }
-    throw new Error(res.data.message || 'Registration failed');
   };
 
   const logout = () => {
