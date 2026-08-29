@@ -64,8 +64,8 @@ class AvailabilityEngine:
         slots = []
         step_minutes = 30 # Generate slots every 30 mins
 
-        curr_datetime = datetime.datetime.combine(target_date, opening_time)
-        close_datetime = datetime.datetime.combine(target_date, closing_time)
+        curr_datetime = timezone.make_aware(datetime.datetime.combine(target_date, opening_time))
+        close_datetime = timezone.make_aware(datetime.datetime.combine(target_date, closing_time))
 
         now = timezone.localtime()
 
@@ -73,9 +73,11 @@ class AvailabilityEngine:
             slot_start = curr_datetime.time()
             slot_end = (curr_datetime + service_duration).time()
 
-            # Check if past time today
+            # Check if past time today or earlier
             is_past = False
-            if target_date == now.date():
+            if target_date < now.date():
+                is_past = True
+            elif target_date == now.date():
                 if curr_datetime <= now + datetime.timedelta(minutes=10):
                     is_past = True
 

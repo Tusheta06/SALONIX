@@ -198,3 +198,33 @@ class SalonRegistrationAndApprovalWorkflowTests(TestCase):
         self.client.force_authenticate(user=self.other_owner)
         res_unauthorized_edit = self.client.patch(reverse('service-detail', kwargs={'pk': srv1_id}), {'price': 1.00})
         self.assertEqual(res_unauthorized_edit.status_code, status.HTTP_403_FORBIDDEN)
+
+        # TEST 13: Availability API works for today's date and tomorrow's date
+        today_str = datetime.date.today().isoformat()
+        tomorrow_str = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
+        past_str = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        staff1_id = st1.data['id']
+
+        # Today's date
+        res_today = self.client.get(
+            f"/api/availability/?salon_id={salon_id}&service_id={srv1_id}&staff_id={staff1_id}&date={today_str}"
+        )
+        self.assertEqual(res_today.status_code, status.HTTP_200_OK)
+        self.assertTrue(res_today.data['success'])
+        self.assertIn('slots', res_today.data)
+
+        # Tomorrow's date
+        res_tomorrow = self.client.get(
+            f"/api/availability/?salon_id={salon_id}&service_id={srv1_id}&staff_id={staff1_id}&date={tomorrow_str}"
+        )
+        self.assertEqual(res_tomorrow.status_code, status.HTTP_200_OK)
+        self.assertTrue(res_tomorrow.data['success'])
+        self.assertIn('slots', res_tomorrow.data)
+
+        # Past date
+        res_past = self.client.get(
+            f"/api/availability/?salon_id={salon_id}&service_id={srv1_id}&staff_id={staff1_id}&date={past_str}"
+        )
+        self.assertEqual(res_past.status_code, status.HTTP_200_OK)
+        self.assertTrue(res_past.data['success'])
+
