@@ -3,7 +3,9 @@ import axios from 'axios';
 // Normalize the base URL to guarantee /api is included exactly once
 const getApiBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL;
-  let base = envUrl && envUrl.trim() ? envUrl.trim() : 'http://localhost:8000/api';
+  let base = envUrl && envUrl.trim()
+    ? envUrl.trim()
+    : (import.meta.env.DEV ? 'http://localhost:8000/api' : 'https://salonix.onrender.com/api');
 
   // Strip trailing slashes
   base = base.replace(/\/+$/, '');
