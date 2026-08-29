@@ -12,7 +12,7 @@ export const LoginScreen = ({ navigation }) => {
     setLoading(true);
     try {
       await login(email, password);
-      navigation.navigate('Home');
+      navigation.navigate('Main', { screen: 'HomeTab' });
     } catch (err) {
       Alert.alert('Login Failed', err.message || 'Check credentials');
     } finally {

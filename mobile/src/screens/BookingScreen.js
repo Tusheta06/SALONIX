@@ -51,7 +51,7 @@ export const BookingScreen = ({ route, navigation }) => {
 
       if (res.data.success) {
         Alert.alert('Appointment Confirmed!', `Booked for ${date} at ${selectedSlot.display_time}`, [
-          { text: 'View My Bookings', onPress: () => navigation.navigate('MyBookings') }
+          { text: 'View My Bookings', onPress: () => navigation.navigate('Main', { screen: 'MyBookings' }) }
         ]);
       }
     } catch (err) {
