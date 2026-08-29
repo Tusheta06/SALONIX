@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // For Android emulator/device or local dev fallback
-const API_BASE_URL = 'http://10.0.2.2:8000/api';
+const API_BASE_URL = 'https://salonix.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
