@@ -1,8 +1,11 @@
 import datetime
+import zoneinfo
 from django.db import transaction, models
 from django.utils import timezone
 from salons.models import Salon, Service, Staff, WorkingHour, StaffLeave
 from .models import Appointment
+
+IST = zoneinfo.ZoneInfo('Asia/Kolkata')
 
 class AvailabilityEngine:
     @staticmethod
@@ -64,31 +67,36 @@ class AvailabilityEngine:
         slots = []
         step_minutes = 30 # Generate slots every 30 mins
 
-        curr_datetime = timezone.make_aware(datetime.datetime.combine(target_date, opening_time))
-        close_datetime = timezone.make_aware(datetime.datetime.combine(target_date, closing_time))
+        now = timezone.now().astimezone(IST)
+        curr_datetime = datetime.datetime.combine(target_date, opening_time, tzinfo=IST)
+        close_datetime = datetime.datetime.combine(target_date, closing_time, tzinfo=IST)
 
-        now = timezone.localtime()
+        # If the requested date is in the past, return no slots
+        if target_date < now.date():
+            return {
+                'success': True,
+                'message': 'Cannot book appointments for past dates.',
+                'is_closed': False,
+                'is_on_leave': False,
+                'slots': []
+            }
 
         while curr_datetime + service_duration <= close_datetime:
             slot_start = curr_datetime.time()
             slot_end = (curr_datetime + service_duration).time()
 
-            # Check if past time today or earlier
-            is_past = False
-            if target_date < now.date():
-                is_past = True
-            elif target_date == now.date():
-                if curr_datetime <= now + datetime.timedelta(minutes=10):
-                    is_past = True
+            # For TODAY only: hide every slot whose start time is earlier than or equal to current time
+            if target_date == now.date() and curr_datetime <= now:
+                curr_datetime += datetime.timedelta(minutes=step_minutes)
+                continue
 
-            # Check overlap with existing appointments
-            is_available = not is_past
-            if is_available:
-                for apt in existing_appointments:
-                    # Overlap if max(slot_start, apt.start_time) < min(slot_end, apt.end_time)
-                    if max(slot_start, apt.start_time) < min(slot_end, apt.end_time):
-                        is_available = False
-                        break
+            # Check overlap with existing appointments (already-booked slots remain disabled)
+            is_available = True
+            for apt in existing_appointments:
+                # Overlap if max(slot_start, apt.start_time) < min(slot_end, apt.end_time)
+                if max(slot_start, apt.start_time) < min(slot_end, apt.end_time):
+                    is_available = False
+                    break
 
             slots.append({
                 'start_time': slot_start.strftime('%H:%M'),
