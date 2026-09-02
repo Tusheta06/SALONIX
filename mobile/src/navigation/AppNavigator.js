@@ -8,6 +8,7 @@ import { BookingScreen } from '../screens/BookingScreen';
 import { MyBookingsScreen } from '../screens/MyBookingsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { LoginScreen } from '../screens/LoginScreen';
+import { RegisterScreen } from '../screens/RegisterScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -23,6 +24,7 @@ const MainTabs = () => (
 export const AppNavigator = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Login" component={LoginScreen} />
+    <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
     <Stack.Screen name="Main" component={MainTabs} />
     <Stack.Screen name="SalonDetail" component={SalonDetailScreen} options={{ headerShown: true, title: 'Salon Details' }} />
     <Stack.Screen name="Booking" component={BookingScreen} options={{ headerShown: true, title: 'Book Appointment' }} />
