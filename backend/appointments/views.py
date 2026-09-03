@@ -88,6 +88,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         end_t = (start_datetime + duration).time()
 
         with transaction.atomic():
+            # One customer can make only ONE booking per calendar day
+            if Appointment.objects.filter(
+                customer=request.user,
+                appointment_date=apt_date
+            ).exclude(status=Appointment.Status.CANCELLED).exists():
+                return Response({
+                    'success': False,
+                    'message': 'You already have a booking on this date. Only one booking per day is allowed.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
             day_of_week = apt_date.weekday()
             wh = WorkingHour.objects.filter(salon=salon, day_of_week=day_of_week).first()
             if not wh or not wh.is_open:

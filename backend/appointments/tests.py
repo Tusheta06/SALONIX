@@ -228,3 +228,132 @@ class SalonRegistrationAndApprovalWorkflowTests(TestCase):
         self.assertEqual(res_past.status_code, status.HTTP_200_OK)
         self.assertTrue(res_past.data['success'])
 
+    def test_one_customer_one_booking_per_calendar_day_rule(self):
+        # Setup Salon A, Salon B, Services, Stylists
+        salon_a = Salon.objects.create(
+            owner=self.owner_tusheta,
+            name='Salon Alpha',
+            address='100 Alpha St',
+            city='Mumbai',
+            is_approved=True,
+            is_active=True,
+            approval_status=Salon.ApprovalStatus.APPROVED
+        )
+        salon_b = Salon.objects.create(
+            owner=self.other_owner,
+            name='Salon Beta',
+            address='200 Beta St',
+            city='Mumbai',
+            is_approved=True,
+            is_active=True,
+            approval_status=Salon.ApprovalStatus.APPROVED
+        )
+
+        for s in [salon_a, salon_b]:
+            for d in range(7):
+                WorkingHour.objects.create(salon=s, day_of_week=d, is_open=True, opening_time='09:00:00', closing_time='20:00:00')
+
+        srv_a = Service.objects.create(salon=salon_a, category=self.category, name='Haircut A', price=500.0, duration_minutes=30)
+        srv_b = Service.objects.create(salon=salon_b, category=self.category, name='Haircut B', price=600.0, duration_minutes=30)
+
+        staff_a1 = Staff.objects.create(salon=salon_a, name='Staff A1', experience_years=3)
+        staff_a2 = Staff.objects.create(salon=salon_a, name='Staff A2', experience_years=4)
+        staff_b1 = Staff.objects.create(salon=salon_b, name='Staff B1', experience_years=5)
+
+        customer_2 = User.objects.create_user(
+            email='customer2@test.com',
+            password=self.password,
+            first_name='Second',
+            last_name='Customer',
+            role=User.Role.CUSTOMER
+        )
+
+        target_date = (datetime.date.today() + datetime.timedelta(days=2)).isoformat()
+        next_date = (datetime.date.today() + datetime.timedelta(days=3)).isoformat()
+
+        # 1. Customer 1 with no booking -> booking succeeds (201)
+        self.client.force_authenticate(user=self.customer)
+        res_booking_1 = self.client.post('/api/appointments/', {
+            'salon': salon_a.id,
+            'service': srv_a.id,
+            'staff': staff_a1.id,
+            'appointment_date': target_date,
+            'start_time': '10:00:00',
+            'notes': 'First booking'
+        })
+        self.assertEqual(res_booking_1.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(res_booking_1.data['success'])
+        booking_1_id = res_booking_1.data['data']['id']
+
+        # 2. Same customer + same date + different salon (Salon B) -> rejected (400)
+        res_diff_salon = self.client.post('/api/appointments/', {
+            'salon': salon_b.id,
+            'service': srv_b.id,
+            'staff': staff_b1.id,
+            'appointment_date': target_date,
+            'start_time': '14:00:00',
+        })
+        self.assertEqual(res_diff_salon.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_diff_salon.data['message'], 'You already have a booking on this date. Only one booking per day is allowed.')
+
+        # 3. Same customer + same date + different time (same salon & staff) -> rejected (400)
+        res_diff_time = self.client.post('/api/appointments/', {
+            'salon': salon_a.id,
+            'service': srv_a.id,
+            'staff': staff_a1.id,
+            'appointment_date': target_date,
+            'start_time': '16:00:00',
+        })
+        self.assertEqual(res_diff_time.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_diff_time.data['message'], 'You already have a booking on this date. Only one booking per day is allowed.')
+
+        # 4. Same customer + same date + different stylist (Staff A2) -> rejected (400)
+        res_diff_stylist = self.client.post('/api/appointments/', {
+            'salon': salon_a.id,
+            'service': srv_a.id,
+            'staff': staff_a2.id,
+            'appointment_date': target_date,
+            'start_time': '11:00:00',
+        })
+        self.assertEqual(res_diff_stylist.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_diff_stylist.data['message'], 'You already have a booking on this date. Only one booking per day is allowed.')
+
+        # 5. Same customer + NEXT date -> succeeds (201)
+        res_next_date = self.client.post('/api/appointments/', {
+            'salon': salon_a.id,
+            'service': srv_a.id,
+            'staff': staff_a1.id,
+            'appointment_date': next_date,
+            'start_time': '10:00:00',
+        })
+        self.assertEqual(res_next_date.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(res_next_date.data['success'])
+
+        # 6. Different customer (Customer 2) + same date -> succeeds (201)
+        self.client.force_authenticate(user=customer_2)
+        res_cust2_booking = self.client.post('/api/appointments/', {
+            'salon': salon_a.id,
+            'service': srv_a.id,
+            'staff': staff_a2.id,
+            'appointment_date': target_date,
+            'start_time': '10:00:00',
+        })
+        self.assertEqual(res_cust2_booking.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(res_cust2_booking.data['success'])
+
+        # 7. Cancelled booking -> Customer 1 cancels their first booking, then books again on target_date -> succeeds (201)
+        self.client.force_authenticate(user=self.customer)
+        res_cancel = self.client.post(f'/api/appointments/{booking_1_id}/cancel/')
+        self.assertEqual(res_cancel.status_code, status.HTTP_200_OK)
+
+        res_rebooking = self.client.post('/api/appointments/', {
+            'salon': salon_b.id,
+            'service': srv_b.id,
+            'staff': staff_b1.id,
+            'appointment_date': target_date,
+            'start_time': '15:00:00',
+        })
+        self.assertEqual(res_rebooking.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(res_rebooking.data['success'])
+
+
