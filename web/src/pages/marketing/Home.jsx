@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { RatingStars } from '../../components/ui/RatingStars';
-import { Search, MapPin, Sparkles, Calendar, ShieldCheck, Clock, Award, ArrowRight, Smartphone, Star, QrCode } from 'lucide-react';
+import { Search, MapPin, Sparkles, Calendar, ShieldCheck, Clock, Award, ArrowRight, Smartphone, Star, ExternalLink, Copy, Check } from 'lucide-react';
 
 export const Home = () => {
   const [salons, setSalons] = useState([]);
@@ -10,6 +10,7 @@ export const Home = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [cityQuery, setCityQuery] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -259,42 +260,55 @@ export const Home = () => {
               Book on the go, receive live appointment notifications, rebook past stylists, and access mobile-exclusive beauty rewards.
             </p>
 
-            <div className="space-y-5 pt-2">
+            <div className="space-y-4 pt-2">
               <div className="flex flex-wrap gap-4">
-                <div className="bg-white/10 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 text-sm font-semibold flex items-center space-x-3">
-                  <Smartphone className="w-6 h-6 text-pink-400" />
-                  <div>
-                    <div className="text-xs text-slate-400">Download for</div>
-                    <div className="text-white font-bold">Expo / Android</div>
-                  </div>
-                </div>
+                <a
+                  href="exp://n5hqb-8-anonymous-8081.exp.direct"
+                  className="inline-flex items-center space-x-3 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold px-7 py-3.5 rounded-2xl shadow-xl shadow-pink-600/30 transition transform hover:-translate-y-0.5 text-sm"
+                >
+                  <Smartphone className="w-5 h-5" />
+                  <span>Open in Expo Go</span>
+                  <ExternalLink className="w-4 h-4 ml-1 opacity-80" />
+                </a>
               </div>
 
-              {/* OR Divider */}
-              <div className="flex items-center space-x-4 max-w-xs">
-                <div className="flex-1 h-px bg-white/20"></div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">OR</span>
-                <div className="flex-1 h-px bg-white/20"></div>
-              </div>
-
-              {/* QR Code Section */}
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2 text-sm font-bold text-pink-300">
-                  <QrCode className="w-4 h-4 text-pink-400" />
-                  <span>Scan QR Code to Open</span>
+              {/* Direct Expo URL Box */}
+              <div className="space-y-2 pt-2 max-w-md">
+                <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                  Direct Expo Link
                 </div>
-
-                <div className="inline-block bg-white p-3.5 rounded-2xl shadow-2xl border border-white/20">
-                  <img
-                    src="/salonix-mobile-qr.png"
-                    alt="Scan QR Code to open Salonix Mobile App"
-                    className="w-36 h-36 sm:w-44 sm:h-44 object-contain rounded-xl"
-                  />
+                <div className="flex items-center justify-between bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3 px-4">
+                  <a
+                    href="exp://n5hqb-8-anonymous-8081.exp.direct"
+                    className="text-xs sm:text-sm font-mono text-pink-300 hover:text-pink-200 underline break-all truncate pr-3"
+                  >
+                    exp://n5hqb-8-anonymous-8081.exp.direct
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText('exp://n5hqb-8-anonymous-8081.exp.direct');
+                      setCopiedLink(true);
+                      setTimeout(() => setCopiedLink(false), 2500);
+                    }}
+                    className="flex items-center space-x-1.5 bg-white/15 hover:bg-white/25 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition flex-shrink-0"
+                    title="Copy Expo link"
+                  >
+                    {copiedLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-green-400" />
+                        <span className="text-green-300">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-slate-300" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-
-                <p className="text-xs text-slate-300 flex items-center space-x-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-pink-400 flex-shrink-0" />
-                  <span>Open your camera and scan to open Salonix Mobile App</span>
+                <p className="text-xs text-slate-400">
+                  Click to open or copy this link into the Expo Go app on your phone.
                 </p>
               </div>
             </div>
