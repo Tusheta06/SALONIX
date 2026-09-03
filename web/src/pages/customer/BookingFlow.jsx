@@ -18,6 +18,7 @@ export const BookingFlow = () => {
   const [submitting, setSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(null);
   const [error, setError] = useState('');
+  const [bookingLimitModal, setBookingLimitModal] = useState({ isOpen: false, title: '', message: '' });
 
   // Step 1: Ensure salon & service exist
   useEffect(() => {
@@ -94,7 +95,18 @@ export const BookingFlow = () => {
         setBookingSuccess(res.data.data);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to book appointment. Selected slot may have just been taken.');
+      const errorMsg = err.response?.data?.message || 'Failed to book appointment. Selected slot may have just been taken.';
+      setError(errorMsg);
+      if (
+        errorMsg.includes('Only one booking per day is allowed') ||
+        errorMsg.includes('already have a booking on this date')
+      ) {
+        setBookingLimitModal({
+          isOpen: true,
+          title: 'Booking Not Allowed',
+          message: errorMsg,
+        });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -396,6 +408,32 @@ export const BookingFlow = () => {
               className="bg-pink-600 hover:bg-pink-700 text-white font-extrabold px-8 py-3.5 rounded-xl shadow-lg shadow-pink-200 transition text-base disabled:opacity-50"
             >
               {submitting ? 'Confirming...' : 'Confirm Appointment'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Booking Not Allowed Popup Modal */}
+      {bookingLimitModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-gray-100 text-center space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">
+              ⚠️
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-extrabold text-gray-900">
+                {bookingLimitModal.title || 'Booking Not Allowed'}
+              </h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {bookingLimitModal.message}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBookingLimitModal({ isOpen: false, title: '', message: '' })}
+              className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-pink-200 transition text-sm"
+            >
+              OK
             </button>
           </div>
         </div>
