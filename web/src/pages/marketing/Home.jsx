@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { RatingStars } from '../../components/ui/RatingStars';
-import { Search, MapPin, Sparkles, Calendar, ShieldCheck, Clock, Award, ArrowRight, Smartphone, Star } from 'lucide-react';
+import { Search, MapPin, Sparkles, Calendar, ShieldCheck, Clock, Award, ArrowRight, Smartphone, Star, QrCode } from 'lucide-react';
 
 export const Home = () => {
   const [salons, setSalons] = useState([]);
@@ -246,7 +246,7 @@ export const Home = () => {
 
       {/* Mobile App CTA Section */}
       <section className="bg-slate-900 text-white rounded-3xl mx-4 sm:mx-8 p-10 md:p-16 relative overflow-hidden">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-6">
             <div className="inline-flex items-center space-x-2 bg-pink-500/20 text-pink-300 text-xs font-semibold px-3 py-1 rounded-full border border-pink-500/30">
               <Smartphone className="w-4 h-4" />
@@ -255,30 +255,68 @@ export const Home = () => {
             <h2 className="text-3xl sm:text-5xl font-bold leading-tight">
               Get the Salonix Mobile App
             </h2>
-            <p className="text-slate-300 text-base">
+            <p className="text-slate-300 text-base leading-relaxed">
               Book on the go, receive live appointment notifications, rebook past stylists, and access mobile-exclusive beauty rewards.
             </p>
-            <div className="flex flex-wrap gap-4 pt-2">
-              <div className="bg-white/10 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 text-sm font-semibold flex items-center space-x-3">
-                <Smartphone className="w-6 h-6 text-pink-400" />
-                <div>
-                  <div className="text-xs text-slate-400">Download for</div>
-                  <div className="text-white font-bold">Expo / Android</div>
+
+            <div className="space-y-5 pt-2">
+              <div className="flex flex-wrap gap-4">
+                <div className="bg-white/10 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 text-sm font-semibold flex items-center space-x-3">
+                  <Smartphone className="w-6 h-6 text-pink-400" />
+                  <div>
+                    <div className="text-xs text-slate-400">Download for</div>
+                    <div className="text-white font-bold">Expo / Android</div>
+                  </div>
                 </div>
+              </div>
+
+              {/* OR Divider */}
+              <div className="flex items-center space-x-4 max-w-xs">
+                <div className="flex-1 h-px bg-white/20"></div>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">OR</span>
+                <div className="flex-1 h-px bg-white/20"></div>
+              </div>
+
+              {/* QR Code Section */}
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2 text-sm font-bold text-pink-300">
+                  <QrCode className="w-4 h-4 text-pink-400" />
+                  <span>Scan QR Code to Open</span>
+                </div>
+
+                <div className="inline-block bg-white p-3.5 rounded-2xl shadow-2xl border border-white/20">
+                  <img
+                    src="/salonix-mobile-qr.png"
+                    alt="Scan QR Code to open Salonix Mobile App"
+                    className="w-36 h-36 sm:w-44 sm:h-44 object-contain rounded-xl"
+                  />
+                </div>
+
+                <p className="text-xs text-slate-300 flex items-center space-x-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-pink-400 flex-shrink-0" />
+                  <span>Open your camera and scan to open Salonix Mobile App</span>
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-center">
-            <div className="bg-gradient-to-tr from-pink-600 to-purple-600 p-6 rounded-3xl shadow-2xl text-white max-w-sm w-full space-y-4">
+          <div className="flex justify-center items-center">
+            <div className="bg-gradient-to-tr from-pink-600 via-purple-600 to-indigo-600 p-6 sm:p-8 rounded-3xl shadow-2xl text-white max-w-sm w-full space-y-5 border border-white/10 relative">
               <div className="flex items-center justify-between border-b border-white/20 pb-3">
-                <div className="font-bold">Salonix Mobile</div>
-                <span className="bg-white text-pink-600 text-xs px-2 py-0.5 rounded-full font-bold">Live API</span>
+                <div className="flex items-center space-x-2">
+                  <Smartphone className="w-5 h-5 text-pink-200" />
+                  <span className="font-bold text-base">Salonix Mobile</span>
+                </div>
+                <span className="bg-white text-pink-600 text-xs px-2.5 py-0.5 rounded-full font-extrabold shadow-sm">Expo Live</span>
               </div>
-              <div className="bg-white/20 backdrop-blur-md p-4 rounded-xl space-y-2">
-                <div className="text-xs text-pink-200">Upcoming Booking</div>
+              <div className="bg-white/15 backdrop-blur-md p-4 rounded-2xl space-y-2 border border-white/10">
+                <div className="text-xs text-pink-200 font-medium">Upcoming Booking</div>
                 <div className="font-bold text-sm">Luxe & Glow Lounge</div>
-                <div className="text-xs">Royal Haircut & Style • 11:00 AM</div>
+                <div className="text-xs text-slate-200">Royal Haircut & Style • 11:00 AM</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-xl flex items-center justify-between text-xs">
+                <span className="text-slate-200">Dynamic Slot Engine</span>
+                <span className="font-semibold text-pink-200">Active</span>
               </div>
             </div>
           </div>
