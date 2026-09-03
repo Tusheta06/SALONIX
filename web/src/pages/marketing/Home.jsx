@@ -260,26 +260,40 @@ export const Home = () => {
               Book on the go, receive live appointment notifications, rebook past stylists, and access mobile-exclusive beauty rewards.
             </p>
 
-            <div className="space-y-4 pt-2">
-              <div className="flex flex-wrap gap-4">
+            <div className="space-y-5 pt-2">
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Primary CTA: Open Salonix Mobile App */}
                 <a
                   href="exp://n5hqb-8-anonymous-8081.exp.direct"
-                  className="inline-flex items-center space-x-3 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold px-7 py-3.5 rounded-2xl shadow-xl shadow-pink-600/30 transition transform hover:-translate-y-0.5 text-sm"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center space-x-3 bg-gradient-to-r from-pink-600 via-pink-500 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold px-7 py-3.5 rounded-2xl shadow-xl shadow-pink-600/30 transition transform hover:-translate-y-0.5 text-sm"
                 >
                   <Smartphone className="w-5 h-5" />
-                  <span>Open in Expo Go</span>
-                  <ExternalLink className="w-4 h-4 ml-1 opacity-80" />
+                  <span>Open Salonix Mobile App</span>
+                  <ExternalLink className="w-4 h-4 ml-1 opacity-90" />
                 </a>
+
+                {/* Download for Expo / Android */}
+                <div className="bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 text-sm font-semibold flex items-center space-x-3">
+                  <Smartphone className="w-5 h-5 text-pink-400" />
+                  <div>
+                    <div className="text-[11px] text-slate-400 leading-tight">Platform</div>
+                    <div className="text-white font-bold text-xs">Expo / Android</div>
+                  </div>
+                </div>
               </div>
 
               {/* Direct Expo URL Box */}
-              <div className="space-y-2 pt-2 max-w-md">
+              <div className="space-y-2 pt-1 max-w-md">
                 <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                  Direct Expo Link
+                  Direct Expo App URL:
                 </div>
                 <div className="flex items-center justify-between bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3 px-4">
                   <a
                     href="exp://n5hqb-8-anonymous-8081.exp.direct"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-xs sm:text-sm font-mono text-pink-300 hover:text-pink-200 underline break-all truncate pr-3"
                   >
                     exp://n5hqb-8-anonymous-8081.exp.direct
@@ -308,7 +322,7 @@ export const Home = () => {
                   </button>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Click to open or copy this link into the Expo Go app on your phone.
+                  Click to open directly or copy this link into the Expo Go app.
                 </p>
               </div>
             </div>
